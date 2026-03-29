@@ -1,0 +1,7 @@
+{
+  "name": "youtube-shorts-generator",
+  "version": "1.0.0",
+  "dependencies": {
+    "google-trends-api": "^4.9.2"
+  }
+}

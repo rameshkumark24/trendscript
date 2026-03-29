@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrendScript</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header class="app-header">
+        <h1>TrendScript</h1>
+        <p>Data-driven YouTube Shorts generated in milliseconds.</p>
+    </header>
+
+    <main class="app-container">
+        <!-- Section 1: Input -->
+        <section class="input-section">
+            <h2>1. Define Your Niche</h2>
+            <div class="search-bar">
+                <input type="text" id="category-input" placeholder="e.g., Kotlin App Development, Tech Reviews" autocomplete="off">
+                <button id="search-btn" onclick="loadCustomTrends()">Find Trends</button>
+            </div>
+        </section>
+
+        <!-- Section 2: Trends -->
+        <section class="trends-section">
+            <h2>2. Select a Breakout Trend</h2>
+            <div id="trends-container" class="trends-grid">
+                <p class="placeholder-text">Enter a category above to see what's trending right now.</p>
+            </div>
+        </section>
+
+        <!-- Section 3: Output Workspace -->
+        <section class="workspace-section">
+            <h2>3. Your 30-Second Production Package</h2>
+            <div class="script-card">
+                <div id="script-display" class="script-content">
+                    <p class="placeholder-text">Click a trend to generate your highly-retained Short script.</p>
+                </div>
+            </div>
+            <div id="action-buttons-container" class="action-buttons"></div>
+        </section>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
