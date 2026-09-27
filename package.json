@@ -1,6 +1,18 @@
 {
-  "name": "youtube-shorts-generator",
-  "version": "1.0.0",
+  "name": "trendscript",
+  "version": "1.1.0",
+  "description": "Turn real-time search trends into ready-to-film 30-second YouTube Shorts production packages.",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node dev/server.js",
+    "dev:mock": "node dev/server.js --mock",
+    "test": "node --test"
+  },
   "dependencies": {
     "google-trends-api": "^4.9.2"
   }
