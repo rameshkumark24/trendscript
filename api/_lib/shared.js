@@ -76,7 +76,8 @@ export function handleError(res, error, fallbackMessage) {
 
 // Calls Groq's chat completion endpoint in JSON mode and returns the parsed object.
 export async function callGroqJson(messages, { temperature = 0.7, timeoutMs = 25_000, fetchImpl = globalThis.fetch } = {}) {
-  const apiKey = process.env.GROQ_API_KEY;
+  // Env values pasted into a dashboard often carry stray whitespace or quotes.
+  const apiKey = (process.env.GROQ_API_KEY || '').trim().replace(/^(['"])(.*)\1$/, '$2');
   if (!apiKey) throw new HttpError(500, 'Server is missing GROQ_API_KEY.');
 
   let response;
@@ -103,7 +104,7 @@ export async function callGroqJson(messages, { temperature = 0.7, timeoutMs = 25
   if (!response.ok || !data || data.error) {
     console.error('GROQ ERROR:', response.status, data?.error);
     if (response.status === 429) throw new HttpError(429, 'AI rate limit reached. Please wait a moment and try again.');
-    if (response.status === 401) throw new HttpError(500, 'The configured GROQ_API_KEY was rejected.');
+    if (response.status === 401) throw new HttpError(500, 'Groq rejected the configured GROQ_API_KEY (401). Check the key and redeploy.');
     throw new HttpError(502, 'The AI provider rejected the request.');
   }
 

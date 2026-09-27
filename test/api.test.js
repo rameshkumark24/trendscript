@@ -100,3 +100,16 @@ test('trends handler rejects empty category', async () => {
   await trendsHandler({ method: 'POST', body: { category: '   ' } }, res);
   assert.equal(res.statusCode, 400);
 });
+
+test('Groq key is sent without stray whitespace or quotes', async () => {
+  process.env.GROQ_API_KEY = '  "gsk_abc"\n';
+  let authHeader;
+  globalThis.fetch = async (_url, init) => {
+    authHeader = init.headers.Authorization;
+    return groqReply({ script: { hook: 'h', buildup: 'b', climax: 'c', cta: 'd' } })();
+  };
+  const res = mockRes();
+  await generateHandler({ method: 'POST', body: { topic: 'cats' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(authHeader, 'Bearer gsk_abc');
+});
