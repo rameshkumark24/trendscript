@@ -4,47 +4,59 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TrendScript</title>
-    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="Turn Google Trends into ready-to-publish 30-second YouTube Shorts scripts.">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <header class="app-header">
         <h1>TrendScript</h1>
-        <p>Data-driven YouTube Shorts generated in milliseconds.</p>
+        <p>Data-driven YouTube Shorts generated in seconds.</p>
     </header>
 
     <main class="app-container">
         <!-- Section 1: Input -->
-        <section class="input-section">
-            <h2>1. Define Your Niche</h2>
-            <div class="search-bar">
-                <input type="text" id="category-input" placeholder="e.g., Kotlin App Development, Tech Reviews" autocomplete="off">
-                <button id="search-btn" onclick="loadCustomTrends()">Find Trends</button>
-            </div>
+        <section class="input-section" aria-labelledby="niche-heading">
+            <h2 id="niche-heading">1. Define Your Niche</h2>
+            <form id="search-form" class="search-bar" novalidate>
+                <label for="category-input" class="visually-hidden">Niche or category</label>
+                <input type="text" id="category-input" name="category" maxlength="120"
+                       placeholder="e.g., Kotlin App Development, Tech Reviews" autocomplete="off" required>
+                <button id="search-btn" type="submit">Find Trends</button>
+            </form>
+            <p id="search-hint" class="hint" aria-live="polite"></p>
         </section>
 
         <!-- Section 2: Trends -->
-        <section class="trends-section">
-            <h2>2. Select a Breakout Trend</h2>
-            <div id="trends-container" class="trends-grid">
+        <section class="trends-section" aria-labelledby="trends-heading">
+            <h2 id="trends-heading">2. Select a Breakout Trend</h2>
+            <div id="trends-container" class="trends-grid" aria-live="polite">
                 <p class="placeholder-text">Enter a category above to see what's trending right now.</p>
             </div>
         </section>
 
         <!-- Section 3: Output Workspace -->
-        <section class="workspace-section">
-            <h2>3. Your 30-Second Production Package</h2>
+        <section class="workspace-section" aria-labelledby="workspace-heading">
+            <h2 id="workspace-heading">3. Your 30-Second Production Package</h2>
             <div class="script-card">
-                <div id="script-display" class="script-content">
+                <div id="script-display" class="script-content" aria-live="polite">
                     <p class="placeholder-text">Click a trend to generate your highly-retained Short script.</p>
                 </div>
             </div>
             <div id="action-buttons-container" class="action-buttons"></div>
         </section>
     </main>
+
+    <footer class="app-footer">
+        <p>Powered by Google Trends &amp; Groq. Always review AI-generated content before publishing.</p>
+    </footer>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
     <script src="app.js"></script>
 </body>
