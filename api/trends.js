@@ -1,4 +1,4 @@
-import { requestGroqJson, requireApiKey, resolveModel } from '../lib/groq.js';
+import { RESCUE_MODEL, requestGroqJson, requireApiKey, resolveModel } from '../lib/groq.js';
 import { assertPost, readJsonBody, sendError, sendJson } from '../lib/http.js';
 import { pickOption, requireText } from '../lib/input.js';
 import { normalizeTopics } from '../lib/normalize.js';
@@ -34,7 +34,9 @@ export function createTrendsHandler({ env = process.env, fetchImpl, trendsClient
         validate: normalizeTopics,
         temperature: 0.8,
         maxTokens: 600,
-        timeoutMs: 10_000,
+        timeoutMs: 8_000,
+        attempts: 3,
+        rescueModel: RESCUE_MODEL,
         fetchImpl: fetchImpl ?? globalThis.fetch,
         logger,
       });

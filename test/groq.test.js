@@ -6,6 +6,7 @@ import {
   DEFAULT_MODEL,
   GROQ_MODELS_URL,
   GROQ_URL,
+  RESCUE_MODEL,
   clearModelOverrides,
   findReplacementModel,
   parseModelJson,
@@ -152,6 +153,52 @@ describe('requestGroqJson', () => {
     assert.equal(await findReplacementModel({ apiKey: 'k', fetchImpl }), 'llama-3.3-70b-versatile');
     assert.equal(await findReplacementModel({ apiKey: 'k', fetchImpl }), 'some-new-llm');
     assert.equal(await findReplacementModel({ apiKey: 'k', fetchImpl }), null);
+  });
+
+  it('salvages the rejected text Groq returns with json_validate_failed', async () => {
+    const failed = jsonResponse(
+      { error: { code: 'json_validate_failed', message: 'Failed to generate JSON', failed_generation: 'Here you go: {"topics": ["a"]}' } },
+      400,
+    );
+    const fetchImpl = fakeFetch([failed]);
+    assert.deepEqual(await requestGroqJson({ ...base, fetchImpl }), { topics: ['a'] });
+    assert.equal(fetchImpl.calls.length, 1);
+  });
+
+  it('retries unusable output with the rescue model and explains a final failure', async () => {
+    const fetchImpl = fakeFetch(() => groqReply({ wrong: true }));
+    const validate = (value) => {
+      if (!value.ok) throw new AiOutputError('Script is missing: cta');
+      return value;
+    };
+    await assert.rejects(requestGroqJson({ ...base, model: 'small', attempts: 3, rescueModel: RESCUE_MODEL, fetchImpl, validate }), {
+      code: 'ai_bad_output',
+      message: /Script is missing: cta/,
+    });
+    assert.deepEqual(
+      fetchImpl.calls.map((c) => c.body.model),
+      ['small', RESCUE_MODEL, RESCUE_MODEL],
+    );
+
+    const recovering = fakeFetch([groqReply({ wrong: true }), groqReply({ ok: true })]);
+    const result = await requestGroqJson({ ...base, model: 'small', attempts: 3, rescueModel: RESCUE_MODEL, fetchImpl: recovering, validate });
+    assert.deepEqual(result, { ok: true });
+    assert.deepEqual(recovering.calls.map((c) => c.body.model), ['small', RESCUE_MODEL]);
+  });
+
+  it('keeps using the configured model if the rescue model is unavailable', async () => {
+    const fetchImpl = fakeFetch([
+      groqReply({ wrong: true }),
+      jsonResponse({ error: { code: 'model_not_found', message: 'no such model' } }, 404),
+      groqReply({ ok: true }),
+    ]);
+    const validate = (value) => {
+      if (!value.ok) throw new AiOutputError('bad');
+      return value;
+    };
+    const result = await requestGroqJson({ ...base, model: 'small', attempts: 3, rescueModel: RESCUE_MODEL, fetchImpl, validate });
+    assert.deepEqual(result, { ok: true });
+    assert.deepEqual(fetchImpl.calls.map((c) => c.body.model), ['small', RESCUE_MODEL, 'small']);
   });
 
   it('passes 429s through with Retry-After', async () => {

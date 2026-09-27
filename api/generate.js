@@ -1,4 +1,4 @@
-import { requestGroqJson, requireApiKey, resolveModel } from '../lib/groq.js';
+import { RESCUE_MODEL, requestGroqJson, requireApiKey, resolveModel } from '../lib/groq.js';
 import { assertPost, readJsonBody, sendError, sendJson } from '../lib/http.js';
 import { cleanText, pickOption, requireText } from '../lib/input.js';
 import { normalizePackage } from '../lib/normalize.js';
@@ -30,7 +30,9 @@ export function createGenerateHandler({ env = process.env, fetchImpl, logger = c
         validate: (raw) => normalizePackage(raw, { topic }),
         temperature: 0.8,
         maxTokens: 1200,
-        timeoutMs: 15_000,
+        timeoutMs: 12_000,
+        attempts: 3,
+        rescueModel: RESCUE_MODEL,
         fetchImpl: fetchImpl ?? globalThis.fetch,
         logger,
       });

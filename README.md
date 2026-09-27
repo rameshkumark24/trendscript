@@ -56,7 +56,7 @@ GROQ_API_KEY=your_groq_api_key_here
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
 | `GROQ_API_KEY` | Yes | | Your Groq API key. |
-| `GROQ_MODEL` | No | `llama-3.1-8b-instant` | Any Groq chat model that supports JSON mode. If the model is retired, the server automatically switches to one your key can use. |
+| `GROQ_MODEL` | No | `llama-3.1-8b-instant` | Any Groq chat model that supports JSON mode. If the model is retired, the server automatically switches to one your key can use. If it returns an unusable script, the retry uses the larger `llama-3.3-70b-versatile`. |
 | `RATE_LIMIT_PER_MINUTE` | No | `20` | Max API requests per client IP per minute, per server instance. `0` disables it. |
 
 ### 3. Run locally
@@ -101,6 +101,7 @@ npm test
 | `The AI service rejected the API key` | Groq refused the key: it's mistyped, deleted or revoked. Create a new one at [console.groq.com/keys](https://console.groq.com/keys), update it in Vercel, and redeploy. |
 | `The AI service rejected the request. Groq says: "…"` | Groq accepted the key but refused the request; the quoted text is Groq's reason (for example an account restriction). |
 | `The AI model "…" is unavailable` | The model is retired and no replacement could be found for your key. Set `GROQ_MODEL` to a model listed in your Groq console. |
+| `The AI returned an incomplete answer (…)` | The model's reply was missing part of the package three times in a row, even after retrying with the larger model. The reason is in brackets. Click **Try again**; if it keeps happening, set `GROQ_MODEL=llama-3.3-70b-versatile`. |
 | `The AI service is rate limited` | You've hit Groq's rate limit (common on the free tier). Wait a minute and try again. |
 
 ## 💡 How to Use
