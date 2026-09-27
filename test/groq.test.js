@@ -10,6 +10,7 @@ import {
   clearModelOverrides,
   findReplacementModel,
   parseModelJson,
+  repairJson,
   requestGroqJson,
   requireApiKey,
   resolveModel,
@@ -23,6 +24,16 @@ describe('parseModelJson', () => {
     assert.deepEqual(parseModelJson('{"a":1}'), { a: 1 });
     assert.deepEqual(parseModelJson('```json\n{"a":1}\n```'), { a: 1 });
     assert.deepEqual(parseModelJson('Sure! Here it is: {"a":1} Enjoy.'), { a: 1 });
+  });
+
+  it('repairs trailing commas, cut-off output and raw line breaks', () => {
+    assert.deepEqual(parseModelJson('{"topics": ["a", "b",]}'), { topics: ['a', 'b'] });
+    assert.deepEqual(parseModelJson('Sure!\n```json\n{"topics": ["a", "b"'), { topics: ['a', 'b'] });
+    assert.deepEqual(parseModelJson('{"hook": "line one\nline two"}'), { hook: 'line one\nline two' });
+    assert.deepEqual(parseModelJson('{"script": {"hook": "Stop scrolling", "cta": "Follow for'), {
+      script: { hook: 'Stop scrolling', cta: 'Follow for' },
+    });
+    assert.equal(repairJson('{"a": [1, 2,'), '{"a": [1, 2]}');
   });
 
   it('returns null for unparseable content', () => {
@@ -153,6 +164,22 @@ describe('requestGroqJson', () => {
     assert.equal(await findReplacementModel({ apiKey: 'k', fetchImpl }), 'llama-3.3-70b-versatile');
     assert.equal(await findReplacementModel({ apiKey: 'k', fetchImpl }), 'some-new-llm');
     assert.equal(await findReplacementModel({ apiKey: 'k', fetchImpl }), null);
+  });
+
+  it('retries without JSON mode when Groq keeps rejecting the output', async () => {
+    const fetchImpl = fakeFetch([
+      jsonResponse({ error: { code: 'json_validate_failed', message: 'Failed to generate JSON', failed_generation: '' } }, 400),
+      groqReply('Here you go: {"topics": ["a"]}'),
+    ]);
+    assert.deepEqual(await requestGroqJson({ ...base, attempts: 1, fetchImpl }), { topics: ['a'] });
+    assert.deepEqual(fetchImpl.calls[0].body.response_format, { type: 'json_object' });
+    assert.equal(fetchImpl.calls[1].body.response_format, undefined);
+  });
+
+  it('uses parseText to salvage plain-text answers', async () => {
+    const fetchImpl = fakeFetch([groqReply('1. First idea\n2. Second idea')]);
+    const parseText = (text) => ({ lines: text.split('\n') });
+    assert.deepEqual(await requestGroqJson({ ...base, fetchImpl, parseText }), { lines: ['1. First idea', '2. Second idea'] });
   });
 
   it('salvages the rejected text Groq returns with json_validate_failed', async () => {

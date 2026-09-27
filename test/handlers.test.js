@@ -53,6 +53,22 @@ describe('POST /api/trends', () => {
     assert.equal(res.json().source, 'google-autocomplete');
   });
 
+  it('recovers when Groq JSON mode rejects every answer (the production failure)', async () => {
+    const rejected = () =>
+      jsonResponse({ error: { code: 'json_validate_failed', message: 'Failed to generate JSON', failed_generation: '' } }, 400);
+    const fetchImpl = fakeFetch((url, init) =>
+      JSON.parse(init.body).response_format
+        ? rejected()
+        : groqReply('Here are your topics:\n1. When should you take creatine?\n2. Creatine myths busted\n3. Creatine for beginners'),
+    );
+    const handler = createTrendsHandler({ env, fetchImpl, trendsClient: risingTrends, logger: silentLogger });
+    const res = await call(handler, { body: { category: 'Fitness', region: 'IN' } });
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.json().trends, ['When should you take creatine?', 'Creatine myths busted', 'Creatine for beginners']);
+    assert.equal(fetchImpl.calls.length, 2);
+  });
+
   it('ignores unknown regions', async () => {
     const calls = [];
     const trendsClient = { relatedQueries: async (options) => (calls.push(options), risingTrends.relatedQueries()) };
@@ -152,6 +168,20 @@ describe('POST /api/generate', () => {
     assert.equal(res.statusCode, 429);
     assert.equal(res.headers['retry-after'], '9');
     assert.equal(res.json().code, 'ai_rate_limited');
+  });
+
+  it('generates a package when JSON mode fails and the plain answer is slightly broken', async () => {
+    const broken = JSON.stringify(VALID_PACKAGE).slice(0, -2); // cut off before the closing brackets
+    const fetchImpl = fakeFetch((url, init) =>
+      JSON.parse(init.body).response_format
+        ? jsonResponse({ error: { code: 'json_validate_failed', failed_generation: '' } }, 400)
+        : groqReply('Sure! ' + broken),
+    );
+    const handler = createGenerateHandler({ env, fetchImpl, logger: silentLogger });
+    const res = await call(handler, { body: { topic: 'Back pain fix' } });
+
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.json().package.script, VALID_PACKAGE.script);
   });
 
   it('retries an incomplete package once before failing', async () => {

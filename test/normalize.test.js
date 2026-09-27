@@ -8,6 +8,7 @@ import {
   normalizeHashtags,
   normalizePackage,
   normalizeTopics,
+  topicsFromText,
 } from '../lib/normalize.js';
 import { VALID_PACKAGE } from './helpers.js';
 
@@ -67,6 +68,16 @@ describe('normalizeChapters', () => {
       { time: '0:00', label: 'Hook' },
       { time: '0:15', label: 'Reveal' },
     ]);
+  });
+});
+
+describe('topicsFromText', () => {
+  it('reads numbered, bulleted or quoted topic lists', () => {
+    const listed = topicsFromText('Here are 6 topics:\n1. Why app devs earn more\n2) The cheapest way to build an app\n- Stop using no-code for this');
+    assert.deepEqual(listed.topics, ['Why app devs earn more', 'The cheapest way to build an app', 'Stop using no-code for this']);
+    const quoted = topicsFromText('{"topics": ["First topic here", "Second topic here", "Third topic here"');
+    assert.equal(quoted.topics.length, 3);
+    assert.equal(topicsFromText('no'), null);
   });
 });
 

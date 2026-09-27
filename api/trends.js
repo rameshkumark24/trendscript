@@ -1,7 +1,7 @@
 import { RESCUE_MODEL, requestGroqJson, requireApiKey, resolveModel } from '../lib/groq.js';
 import { assertPost, readJsonBody, sendError, sendJson } from '../lib/http.js';
 import { pickOption, requireText } from '../lib/input.js';
-import { normalizeTopics } from '../lib/normalize.js';
+import { normalizeTopics, topicsFromText } from '../lib/normalize.js';
 import { REGIONS } from '../lib/options.js';
 import { buildTopicMessages } from '../lib/prompts.js';
 import { createRateLimiter, enforceRateLimit } from '../lib/rate-limit.js';
@@ -32,6 +32,7 @@ export function createTrendsHandler({ env = process.env, fetchImpl, trendsClient
         model: resolveModel(env),
         messages: buildTopicMessages({ category, keywords: seeds.keywords, region }),
         validate: normalizeTopics,
+        parseText: topicsFromText,
         temperature: 0.8,
         maxTokens: 600,
         timeoutMs: 8_000,
