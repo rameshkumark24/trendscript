@@ -1,0 +1,4 @@
+# Development-only files that should not ship with the deployment.
+dev/
+test/
+.github/
