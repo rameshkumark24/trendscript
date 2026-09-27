@@ -1,79 +1,110 @@
 # TrendScript 📈🎬
 
-TrendScript is a data-driven web application that generates highly-retained, 30-second YouTube Shorts production packages in milliseconds. By combining real-time search data from Google Trends with Groq's blazing-fast LLaMA 3.1 AI model, TrendScript helps creators find breakout topics and instantly generates ready-to-publish scripts.
+TrendScript is a data-driven web app that turns real-time Google Trends data into ready-to-publish, 30-second YouTube Shorts production packages. It pulls rising search queries for your niche, uses Groq's fast LLaMA 3.1 model to turn them into hook-driven topics, then generates a fully timed script with metadata in seconds.
 
 ## ✨ Features
 
-- **Real-Time Trend Discovery**: Scrapes current Google Trends data to find breakout queries for any specified niche.
-- **AI-Powered Title Generation**: Converts raw search keywords into highly specific, engaging, and clickable video topics.
-- **Complete Production Packages**: Instantly generates a structured JSON payload containing:
-  - High-CTR video titles
-  - Visual/thumbnail concepts for the opening shot
-  - SEO-optimized captions and hashtags
+- **Real-time trend discovery**: Pulls rising and top related queries from Google Trends for any niche. If Google rate-limits the request, the app falls back to niche-based keywords instead of failing.
+- **AI topic generation**: Turns raw search keywords into 6 specific, clickable video topics.
+- **Complete production packages**:
+  - High-CTR video title
+  - Visual/thumbnail concept for the opening shot
+  - SEO caption and hashtags
   - A strictly timed 4-phase script (Hook, Build-up, Climax, CTA)
-  - Timed chapters for YouTube
-- **Caching Mechanism**: Uses `localStorage` to save previously generated scripts, saving API calls and providing instant load times for revisited trends.
-- **Modern UI**: A responsive, dark-mode workspace built with CSS grid and flexbox.
+  - Timed YouTube chapters
+  - Word count with an estimated read time, flagged when the script runs past 30 seconds
+- **Export**: Copy the voiceover script, copy the full package as Markdown, or download it as a `.md` file.
+- **Smart caching**: Generated packages are cached in `localStorage` (the 25 most recent are kept) for instant reloads. **Regenerate** always fetches a fresh package.
+- **Hardened by default**: AI output is rendered as text, never as HTML, which prevents XSS. The server validates input and normalizes the model's JSON before sending it on. Requests time out, and rate-limit errors are shown to the user.
+- **Modern, accessible UI**: Responsive dark theme, keyboard-friendly (press Enter to search), live regions for screen readers, and support for reduced-motion settings.
 
 ## 🚀 Tech Stack
 
-- **Frontend**: HTML5, CSS3, Vanilla JavaScript (`app.js`)
-- **Backend / API**: Serverless Functions (`/api/trends.js`, `/api/generate.js`)
-- **AI / LLM**: Groq API (`llama-3.1-8b-instant`)
-- **Data Source**: `google-trends-api` (npm package)
+- **Frontend**: HTML5, CSS3, vanilla JavaScript (`app.js`)
+- **Backend**: Vercel serverless functions (`api/trends.js`, `api/generate.js`)
+- **AI / LLM**: Groq API (`llama-3.1-8b-instant` by default, configurable)
+- **Data source**: [`google-trends-api`](https://www.npmjs.com/package/google-trends-api)
 
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
-- Node.js installed on your machine
-- A [Groq Cloud](https://console.groq.com/) account for the API key
-- Vercel CLI (recommended, since the project utilizes `/api` serverless routes)
+- Node.js 18.17 or newer
+- A [Groq Cloud](https://console.groq.com/) API key
 
 ### 1. Clone the repository
-\`\`\`bash
-git clone <your-repository-url>
+```bash
+git clone https://github.com/rameshkumark24/trendscript.git
 cd trendscript
-\`\`\`
+```
 
-### 2. Install Dependencies
-Installs the required `google-trends-api` package.
-\`\`\`bash
+### 2. Install dependencies
+```bash
 npm install
-\`\`\`
+```
 
-### 3. Configure Environment Variables
-Create a `.env` file in the root of your project and add your Groq API key:
-\`\`\`env
+### 3. Configure environment variables
+```bash
+cp .env.example .env
+```
+Then edit `.env`:
+```env
 GROQ_API_KEY=your_groq_api_key_here
-\`\`\`
+# Optional:
+# GROQ_MODEL=llama-3.1-8b-instant
+```
 
-### 4. Run the Development Server
-Because this project uses serverless API routes (`/api/generate.js` and `/api/trends.js`), the easiest way to run it locally is using Vercel CLI:
-\`\`\`bash
-npm i -g vercel
-vercel dev
-\`\`\`
-*(Alternatively, you can deploy it directly to Vercel or Firebase Hosting).*
+### 4. Run locally
+```bash
+npm start          # http://localhost:3000
+npm run dev        # same, with auto-restart on file changes
+```
+The built-in dev server has no dependencies. It serves the frontend and the `/api` routes exactly as Vercel would. You can still use `vercel dev` if you prefer.
+
+### 5. Run tests
+```bash
+npm test
+```
+
+## ☁️ Deployment (Vercel)
+
+1. Import the repository in Vercel. No build step is needed.
+2. Add `GROQ_API_KEY` (and optionally `GROQ_MODEL`) under **Project → Settings → Environment Variables**.
+3. Deploy. The files in `api/` become serverless functions automatically.
 
 ## 💡 How to Use
 
-1. **Define Your Niche**: Enter a broad topic (e.g., "Tech Reviews", "Fitness", "React Development") into the search bar.
-2. **Select a Trend**: The app fetches real-time related queries from Google Trends and uses AI to format them into 6 actionable hook-driven topics.
-3. **Get Your Script**: Click on a generated trend to instantly create a 30-second production package complete with a script, thumbnail ideas, and metadata.
+1. **Define your niche**: Enter a broad topic, such as "Tech Reviews", "Fitness", or "React Development", and press **Enter**.
+2. **Select a trend**: Pick one of the 6 AI-generated topics built from live search data.
+3. **Get your script**: Review the 30-second package, then copy or download it. Click **Regenerate Package** for a new version.
+
+## 🔌 API
+
+| Endpoint | Body | Response |
+| --- | --- | --- |
+| `POST /api/trends` | `{ "category": "Fitness" }` | `{ "trends": string[], "keywords": string[], "source": "google-trends" \| "fallback" }` |
+| `POST /api/generate` | `{ "topic": "..." }` | `{ "package": { title, thumbnail_idea, caption, hashtags[], chapters[], script{hook,buildup,climax,cta} } }` |
+
+Errors return `{ "error": "message" }` with a status code: 400 for invalid input, 405 for the wrong method, 429 when rate-limited, 502/504 for AI provider failures, and 500 for other server errors.
 
 ## 📂 Project Structure
 
-\`\`\`text
+```text
 ├── api/
-│   ├── generate.js    # Endpoint for generating the final video script
-│   └── trends.js      # Endpoint for fetching and parsing Google Trends
-├── app.js             # Main frontend logic and DOM manipulation
-├── index.html         # Main application UI
-├── style.css          # Custom styling and dark-mode layout
-├── 404.html           # Fallback error page
-├── package.json       # Project dependencies
-└── .gitignore         # Ignored files and directories
-\`\`\`
+│   ├── _lib/shared.js   # Shared helpers: body parsing, validation, Groq client (not a route)
+│   ├── generate.js      # POST /api/generate – production package
+│   └── trends.js        # POST /api/trends – Google Trends + AI topic generation
+├── scripts/
+│   └── dev-server.js    # Zero-dependency local server
+├── test/
+│   └── api.test.js      # Node test runner suite for the API
+├── app.js               # Frontend logic
+├── index.html           # Main UI
+├── style.css            # Styling
+├── 404.html             # Not-found page
+├── favicon.svg
+├── .env.example
+└── package.json
+```
 
 ## 📝 License
-This project is open-source and available under the [MIT License](LICENSE).
+Released under the [MIT License](LICENSE).
