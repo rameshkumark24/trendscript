@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { normalizePackage } from '../api/generate.js';
 import generateHandler from '../api/generate.js';
 import trendsHandler, { fetchRawTrends, normalizeTopics } from '../api/trends.js';
-import { cleanText, readJsonBody } from '../api/_lib/shared.js';
+import { cleanText, readJsonBody, resetModelCache } from '../api/_lib/shared.js';
 
 function mockRes() {
   return {
@@ -19,7 +19,7 @@ function groqReply(content, status = 200) {
 }
 
 const realFetch = globalThis.fetch;
-beforeEach(() => { process.env.GROQ_API_KEY = 'test-key'; });
+beforeEach(() => { process.env.GROQ_API_KEY = 'test-key'; resetModelCache(); });
 afterEach(() => { globalThis.fetch = realFetch; delete process.env.GROQ_API_KEY; });
 
 test('cleanText strips control chars, collapses whitespace and truncates', () => {
@@ -112,4 +112,50 @@ test('Groq key is sent without stray whitespace or quotes', async () => {
   await generateHandler({ method: 'POST', body: { topic: 'cats' } }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(authHeader, 'Bearer gsk_abc');
+});
+
+const VALID_PKG = { script: { hook: 'h', buildup: 'b', climax: 'c', cta: 'd' } };
+const jsonResponse = (body, status = 200) => new Response(JSON.stringify(body), { status });
+
+test('switches to an available model when the configured one is decommissioned', async () => {
+  const models = [];
+  globalThis.fetch = async (url, init) => {
+    if (url.endsWith('/models')) return jsonResponse({ data: [{ id: 'whisper-large-v3' }, { id: 'openai/gpt-oss-20b' }] });
+    const { model } = JSON.parse(init.body);
+    models.push(model);
+    if (model === 'llama-3.1-8b-instant') {
+      return jsonResponse({ error: { message: 'The model `llama-3.1-8b-instant` has been decommissioned', code: 'model_decommissioned' } }, 400);
+    }
+    return groqReply(VALID_PKG)();
+  };
+  const res = mockRes();
+  await generateHandler({ method: 'POST', body: { topic: 'cats' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(models, ['llama-3.1-8b-instant', 'openai/gpt-oss-20b']);
+
+  // The working model is remembered for later requests.
+  models.length = 0;
+  await generateHandler({ method: 'POST', body: { topic: 'dogs' } }, mockRes());
+  assert.deepEqual(models, ['openai/gpt-oss-20b']);
+});
+
+test('retries once when Groq reports json_validate_failed', async () => {
+  let calls = 0;
+  globalThis.fetch = async () => {
+    calls++;
+    if (calls === 1) return jsonResponse({ error: { message: 'Failed to generate JSON', code: 'json_validate_failed' } }, 400);
+    return groqReply(VALID_PKG)();
+  };
+  const res = mockRes();
+  await generateHandler({ method: 'POST', body: { topic: 'cats' } }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(calls, 2);
+});
+
+test('surfaces the provider error detail for other failures', async () => {
+  globalThis.fetch = async () => jsonResponse({ error: { message: 'Organization has been restricted.', code: 'organization_restricted' } }, 400);
+  const res = mockRes();
+  await generateHandler({ method: 'POST', body: { topic: 'cats' } }, res);
+  assert.equal(res.statusCode, 502);
+  assert.match(res.body.error, /\(400: Organization has been restricted\.\)/);
 });

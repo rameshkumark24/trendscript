@@ -74,44 +74,117 @@ export function handleError(res, error, fallbackMessage) {
   sendJson(res, 500, { error: fallbackMessage });
 }
 
-// Calls Groq's chat completion endpoint in JSON mode and returns the parsed object.
-export async function callGroqJson(messages, { temperature = 0.7, timeoutMs = 25_000, fetchImpl = globalThis.fetch } = {}) {
+const GROQ_MODELS_URL = 'https://api.groq.com/openai/v1/models';
+// Tried in order when the configured model is retired or unavailable on the account.
+export const FALLBACK_MODELS = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'openai/gpt-oss-20b', 'openai/gpt-oss-120b'];
+const NON_CHAT_MODEL = /whisper|tts|guard|playai|orpheus|compound|prompt-guard/i;
+const MAX_ATTEMPTS = 3;
+
+// Remembers a working fallback for the lifetime of the (warm) serverless instance.
+let resolvedModel = null;
+
+export function resetModelCache() {
+  resolvedModel = null;
+}
+
+function getApiKey() {
   // Env values pasted into a dashboard often carry stray whitespace or quotes.
   const apiKey = (process.env.GROQ_API_KEY || '').trim().replace(/^(['"])(.*)\1$/, '$2');
   if (!apiKey) throw new HttpError(500, 'Server is missing GROQ_API_KEY.');
+  return apiKey;
+}
 
-  let response;
+function isModelError(status, error) {
+  const code = String(error?.code || '');
+  const message = String(error?.message || '');
+  return code === 'model_not_found' || code === 'model_decommissioned' ||
+    ((status === 400 || status === 404) && /model/i.test(message) &&
+      /decommission|not found|does not exist|not supported|no longer|access/i.test(message));
+}
+
+// Picks the next model to try, preferring ones the account can actually use.
+async function pickFallbackModel(apiKey, tried, fetchImpl) {
+  let available = null;
   try {
-    response = await fetchImpl(GROQ_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || DEFAULT_MODEL,
-        temperature,
-        response_format: { type: 'json_object' },
-        messages,
-      }),
-      signal: AbortSignal.timeout(timeoutMs),
+    const response = await fetchImpl(GROQ_MODELS_URL, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(8_000),
     });
-  } catch (error) {
-    if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
-      throw new HttpError(504, 'The AI provider took too long to respond. Please try again.');
+    const data = await response.json();
+    if (response.ok && Array.isArray(data?.data)) {
+      available = data.data.filter(m => m?.id && m.active !== false).map(m => m.id);
     }
-    throw error;
-  }
-
-  const data = await response.json().catch(() => null);
-  if (!response.ok || !data || data.error) {
-    console.error('GROQ ERROR:', response.status, data?.error);
-    if (response.status === 429) throw new HttpError(429, 'AI rate limit reached. Please wait a moment and try again.');
-    if (response.status === 401) throw new HttpError(500, 'Groq rejected the configured GROQ_API_KEY (401). Check the key and redeploy.');
-    throw new HttpError(502, 'The AI provider rejected the request.');
-  }
-
-  const content = data.choices?.[0]?.message?.content;
-  try {
-    return JSON.parse(content);
   } catch {
-    throw new HttpError(502, 'The AI returned malformed data. Please try again.');
+    // Fall through to the static list.
+  }
+
+  const untried = id => !tried.has(id);
+  if (available) {
+    return FALLBACK_MODELS.find(id => available.includes(id) && untried(id)) ||
+      available.find(id => untried(id) && !NON_CHAT_MODEL.test(id)) || null;
+  }
+  return FALLBACK_MODELS.find(untried) || null;
+}
+
+function describeProviderError(status, error) {
+  const detail = String(error?.message || '').replace(/\s+/g, ' ').trim().slice(0, 200);
+  return `The AI provider rejected the request (${status}${detail ? `: ${detail}` : ''}).`;
+}
+
+// Calls Groq's chat completion endpoint in JSON mode and returns the parsed object.
+// Retries on transient JSON-mode failures and switches models if the configured one is retired.
+export async function callGroqJson(messages, { temperature = 0.7, timeoutMs = 25_000, fetchImpl = globalThis.fetch } = {}) {
+  const apiKey = getApiKey();
+  let model = resolvedModel || cleanText(process.env.GROQ_MODEL, 100) || DEFAULT_MODEL;
+  const tried = new Set();
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    tried.add(model);
+    let response;
+    try {
+      response = await fetchImpl(GROQ_URL, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, temperature, response_format: { type: 'json_object' }, messages }),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (error) {
+      if (error?.name === 'TimeoutError' || error?.name === 'AbortError') {
+        throw new HttpError(504, 'The AI provider took too long to respond. Please try again.');
+      }
+      throw error;
+    }
+
+    const data = await response.json().catch(() => null);
+    const lastAttempt = attempt === MAX_ATTEMPTS;
+
+    if (!response.ok || !data || data.error) {
+      const error = data?.error;
+      console.error('GROQ ERROR:', response.status, model, error);
+
+      if (response.status === 401) throw new HttpError(500, 'Groq rejected the configured GROQ_API_KEY (401). Check the key and redeploy.');
+      if (response.status === 429) throw new HttpError(429, 'AI rate limit reached. Please wait a moment and try again.');
+
+      if (!lastAttempt && isModelError(response.status, error)) {
+        const next = await pickFallbackModel(apiKey, tried, fetchImpl);
+        if (next) {
+          console.warn(`Model "${model}" unavailable; retrying with "${next}".`);
+          model = next;
+          continue;
+        }
+      }
+      // Groq returns 400 json_validate_failed when the model emits invalid JSON; a retry usually succeeds.
+      if (!lastAttempt && (error?.code === 'json_validate_failed' || response.status >= 500)) continue;
+
+      throw new HttpError(502, describeProviderError(response.status, error));
+    }
+
+    try {
+      const parsed = JSON.parse(data.choices?.[0]?.message?.content);
+      if (model !== (cleanText(process.env.GROQ_MODEL, 100) || DEFAULT_MODEL)) resolvedModel = model;
+      return parsed;
+    } catch {
+      if (lastAttempt) throw new HttpError(502, 'The AI returned malformed data. Please try again.');
+    }
   }
 }

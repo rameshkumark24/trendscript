@@ -22,7 +22,7 @@ TrendScript is a data-driven web app that turns real-time Google Trends data int
 
 - **Frontend**: HTML5, CSS3, vanilla JavaScript (`app.js`)
 - **Backend**: Vercel serverless functions (`api/trends.js`, `api/generate.js`)
-- **AI / LLM**: Groq API (`llama-3.1-8b-instant` by default, configurable)
+- **AI / LLM**: Groq API (`llama-3.1-8b-instant` by default, configurable via `GROQ_MODEL`; automatically falls back to another available model if it is retired)
 - **Data source**: [`google-trends-api`](https://www.npmjs.com/package/google-trends-api)
 
 ## 🛠️ Installation & Setup
@@ -70,6 +70,17 @@ npm test
 1. Import the repository in Vercel. No build step is needed.
 2. Add `GROQ_API_KEY` (and optionally `GROQ_MODEL`) under **Project → Settings → Environment Variables**.
 3. Deploy. The files in `api/` become serverless functions automatically.
+
+## 🩺 Troubleshooting
+
+| Message in the app | Meaning / fix |
+| --- | --- |
+| `Server is missing GROQ_API_KEY.` | The variable isn't set for this environment. Add it in Vercel for **Production and Preview**, then redeploy. |
+| `Groq rejected the configured GROQ_API_KEY (401)` | The key is wrong, deleted, or revoked. Create a new key at [console.groq.com/keys](https://console.groq.com/keys), update it in Vercel, and redeploy. |
+| `The AI provider rejected the request (400: …)` | Groq's own reason is shown after the status code, for example a model or account restriction. If it's about the model, set `GROQ_MODEL` to a model listed in your Groq console. |
+| `AI rate limit reached` | You hit Groq's free-tier limit. Wait a minute and try again. |
+
+Changing an environment variable in Vercel only takes effect after a **redeploy**. Each deployment keeps its own URL, so test the latest one (or your production domain), not an older `trendscript-xxxx.vercel.app` link.
 
 ## 💡 How to Use
 
