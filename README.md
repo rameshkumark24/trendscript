@@ -56,7 +56,7 @@ GROQ_API_KEY=your_groq_api_key_here
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
 | `GROQ_API_KEY` | Yes | | Your Groq API key. |
-| `GROQ_MODEL` | No | `llama-3.1-8b-instant` | Any Groq chat model that supports JSON mode. |
+| `GROQ_MODEL` | No | `llama-3.1-8b-instant` | Any Groq chat model that supports JSON mode. If the model is retired, the server automatically switches to one your key can use. |
 | `RATE_LIMIT_PER_MINUTE` | No | `20` | Max API requests per client IP per minute, per server instance. `0` disables it. |
 
 ### 3. Run locally
@@ -86,10 +86,22 @@ npm test
 ## ☁️ Deploy to Vercel
 
 1. Import the repository in Vercel (the "Other" framework preset works; no build command is needed).
-2. Add `GROQ_API_KEY` (and optionally `GROQ_MODEL`) under **Settings → Environment Variables**.
+2. Add `GROQ_API_KEY` (and optionally `GROQ_MODEL`) under **Settings → Environment Variables**, enabled for both **Production** and **Preview**.
 3. Deploy. `vercel.json` configures the function timeout and security headers.
 
+> Changing an environment variable only takes effect after a **redeploy**. Every deployment keeps its own `trendscript-xxxx.vercel.app` URL forever, so test the latest deployment or your production domain, not an old link.
+
 > The `/api` routes are Vercel Serverless Functions, so static-only hosts such as Firebase Hosting or GitHub Pages can't run TrendScript without a separate backend.
+
+## 🩺 Troubleshooting
+
+| Message in the app | What it means / how to fix it |
+| --- | --- |
+| `The server is missing GROQ_API_KEY` | The variable isn't set for this environment. Add it in Vercel (Production **and** Preview), then redeploy. |
+| `The AI service rejected the API key` | Groq refused the key: it's mistyped, deleted or revoked. Create a new one at [console.groq.com/keys](https://console.groq.com/keys), update it in Vercel, and redeploy. |
+| `The AI service rejected the request. Groq says: "…"` | Groq accepted the key but refused the request; the quoted text is Groq's reason (for example an account restriction). |
+| `The AI model "…" is unavailable` | The model is retired and no replacement could be found for your key. Set `GROQ_MODEL` to a model listed in your Groq console. |
+| `The AI service is rate limited` | You've hit Groq's rate limit (common on the free tier). Wait a minute and try again. |
 
 ## 💡 How to Use
 
