@@ -97,6 +97,35 @@ describe('normalizePackage', () => {
     assert.equal(pkg.caption, '');
   });
 
+  it('accepts the script shapes small models drift into', () => {
+    const expected = { hook: 'H.', buildup: 'B.', climax: 'C.', cta: 'D.' };
+    const shapes = {
+      'labelled keys': { script: { 'Hook (0-3s)': 'H.', 'Build-Up': 'B.', 'Climax / Payoff': 'C.', 'Call to Action': 'D.' } },
+      'object values': { script: { hook: { text: 'H.', duration: '3s' }, buildup: { line: 'B.' }, climax: { content: 'C.' }, cta: { text: 'D.' } } },
+      'time keys': { script: { '0-3s': 'H.', '3-15s': 'B.', '15-25s': 'C.', '25-30s': 'D.' } },
+      'labelled array': {
+        script: [
+          { section: 'Hook', text: 'H.' },
+          { section: 'Build-up', text: 'B.' },
+          { section: 'Climax', text: 'C.' },
+          { section: 'CTA', text: 'D.' },
+        ],
+      },
+      'unlabelled array': { script: ['H.', 'B.', 'C.', 'D.'] },
+      'one paragraph': { script: 'H. B. C. D.' },
+      'other wrapper': { production_package: { script: { hook: 'H.', buildup: 'B.', climax: 'C.', cta: 'D.' } } },
+    };
+    for (const [name, raw] of Object.entries(shapes)) {
+      assert.deepEqual(normalizePackage(raw, { topic: 't' }).script, expected, name);
+    }
+  });
+
+  it('does not mistake metadata keys for script sections', () => {
+    const pkg = normalizePackage({ ...VALID_PACKAGE, caption: 'A caption.', chapters: [] }, { topic: 'x' });
+    assert.equal(pkg.script.cta, VALID_PACKAGE.script.cta);
+    assert.equal(pkg.caption, 'A caption.');
+  });
+
   it('rejects a package with a missing script phase', () => {
     const broken = { ...VALID_PACKAGE, script: { ...VALID_PACKAGE.script, cta: '  ' } };
     assert.throws(() => normalizePackage(broken, { topic: 'x' }), /missing: cta/);
