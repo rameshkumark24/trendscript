@@ -3,61 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TrendScript</title>
-    <meta name="description" content="Turn Google Trends into ready-to-publish 30-second YouTube Shorts scripts.">
+    <title>TrendScript — Trend-driven YouTube Shorts scripts</title>
+    <meta name="description" content="Turn real-time search trends into ready-to-film 30-second YouTube Shorts production packages.">
     <meta name="theme-color" content="#0f172a">
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
 </head>
 <body>
 
     <header class="app-header">
         <h1>TrendScript</h1>
-        <p>Data-driven YouTube Shorts generated in seconds.</p>
+        <p>Real search trends in. Ready-to-film 30-second Shorts out.</p>
     </header>
 
     <main class="app-container">
         <!-- Section 1: Input -->
-        <section class="input-section" aria-labelledby="niche-heading">
-            <h2 id="niche-heading">1. Define Your Niche</h2>
-            <form id="search-form" class="search-bar" novalidate>
-                <label for="category-input" class="visually-hidden">Niche or category</label>
-                <input type="text" id="category-input" name="category" maxlength="120"
-                       placeholder="e.g., Kotlin App Development, Tech Reviews" autocomplete="off" required>
-                <button id="search-btn" type="submit">Find Trends</button>
+        <section class="panel" aria-labelledby="step-1-title">
+            <h2 id="step-1-title"><span class="step-badge" aria-hidden="true">1</span> Define your niche</h2>
+            <form id="niche-form" class="stack" novalidate>
+                <label for="category-input" class="sr-only">Niche or category</label>
+                <div class="search-bar">
+                    <input type="text" id="category-input" name="category" placeholder="e.g., Kotlin App Development, Tech Reviews" autocomplete="off" maxlength="80" required>
+                    <button type="submit" id="search-btn" class="btn btn-primary">Find Trends</button>
+                </div>
+                <div class="options-row">
+                    <label class="field">
+                        <span>Region</span>
+                        <select id="region-select" name="region">
+                            <option value="">Worldwide</option>
+                            <option value="US">United States</option>
+                            <option value="IN">India</option>
+                            <option value="GB">United Kingdom</option>
+                            <option value="CA">Canada</option>
+                            <option value="AU">Australia</option>
+                            <option value="DE">Germany</option>
+                            <option value="BR">Brazil</option>
+                        </select>
+                    </label>
+                    <label class="field">
+                        <span>Script tone</span>
+                        <select id="tone-select" name="tone">
+                            <option value="energetic">Energetic</option>
+                            <option value="educational">Educational</option>
+                            <option value="storytelling">Storytelling</option>
+                            <option value="humorous">Humorous</option>
+                        </select>
+                    </label>
+                </div>
             </form>
-            <p id="search-hint" class="hint" aria-live="polite"></p>
         </section>
 
         <!-- Section 2: Trends -->
-        <section class="trends-section" aria-labelledby="trends-heading">
-            <h2 id="trends-heading">2. Select a Breakout Trend</h2>
+        <section class="panel" aria-labelledby="step-2-title">
+            <h2 id="step-2-title"><span class="step-badge" aria-hidden="true">2</span> Select a breakout trend</h2>
+            <p id="trends-status" class="status-line" role="status" aria-live="polite" hidden></p>
             <div id="trends-container" class="trends-grid" aria-live="polite">
-                <p class="placeholder-text">Enter a category above to see what's trending right now.</p>
+                <p class="placeholder-text">Enter a niche above to see what's trending right now.</p>
             </div>
+            <form id="custom-topic-form" class="custom-topic stack" novalidate>
+                <label for="custom-topic-input" class="muted-label">Or script your own topic</label>
+                <div class="search-bar">
+                    <input type="text" id="custom-topic-input" name="topic" placeholder="e.g., The 30-second fix for lower back pain" autocomplete="off" maxlength="150">
+                    <button type="submit" class="btn btn-secondary">Generate</button>
+                </div>
+            </form>
         </section>
 
         <!-- Section 3: Output Workspace -->
-        <section class="workspace-section" aria-labelledby="workspace-heading">
-            <h2 id="workspace-heading">3. Your 30-Second Production Package</h2>
+        <section id="workspace" class="panel" aria-labelledby="step-3-title">
+            <h2 id="step-3-title"><span class="step-badge" aria-hidden="true">3</span> Your 30-second production package</h2>
             <div class="script-card">
                 <div id="script-display" class="script-content" aria-live="polite">
                     <p class="placeholder-text">Click a trend to generate your highly-retained Short script.</p>
                 </div>
             </div>
-            <div id="action-buttons-container" class="action-buttons"></div>
+            <div id="action-buttons-container" class="action-buttons" hidden>
+                <button type="button" class="btn btn-ghost" data-action="copy-script">Copy script</button>
+                <button type="button" class="btn btn-ghost" data-action="copy-all">Copy full package</button>
+                <button type="button" class="btn btn-ghost" data-action="download">Download .md</button>
+                <button type="button" id="regen-btn" class="btn btn-dashed" data-action="regenerate">Regenerate package</button>
+            </div>
+        </section>
+
+        <!-- Saved packages -->
+        <section id="history-panel" class="panel" aria-labelledby="history-title" hidden>
+            <div class="panel-head">
+                <h2 id="history-title">Recent packages</h2>
+                <button type="button" id="clear-history-btn" class="btn btn-link">Clear all</button>
+            </div>
+            <p class="hint">Saved in this browser only, so reopening one costs no API calls.</p>
+            <ul id="history-list" class="history-list"></ul>
         </section>
     </main>
 
     <footer class="app-footer">
-        <p>Powered by Google Trends &amp; Groq. Always review AI-generated content before publishing.</p>
+        <p>Powered by Google Trends and Groq. AI can get facts wrong, so review every script before you publish.</p>
     </footer>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-    <script src="app.js"></script>
 </body>
 </html>

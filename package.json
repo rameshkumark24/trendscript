@@ -1,16 +1,16 @@
 {
   "name": "trendscript",
   "version": "1.1.0",
-  "description": "Generate data-driven 30-second YouTube Shorts production packages from Google Trends and Groq AI.",
+  "description": "Turn real-time search trends into ready-to-film 30-second YouTube Shorts production packages.",
   "private": true,
   "type": "module",
   "license": "MIT",
   "engines": {
-    "node": ">=18.17"
+    "node": ">=20"
   },
   "scripts": {
-    "start": "node scripts/dev-server.js",
-    "dev": "node --watch scripts/dev-server.js",
+    "dev": "node dev/server.js",
+    "dev:mock": "node dev/server.js --mock",
     "test": "node --test"
   },
   "dependencies": {

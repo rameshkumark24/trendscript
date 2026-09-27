@@ -3,24 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page Not Found · TrendScript</title>
+    <title>Page not found · TrendScript</title>
+    <meta name="robots" content="noindex">
+    <meta name="theme-color" content="#0f172a">
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-    <style>
-        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box;
-               background: #0f172a; color: #f8fafc; font-family: Inter, system-ui, -apple-system, sans-serif; text-align: center; }
-        .card { background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 40px 32px; max-width: 420px; }
-        h1 { font-size: 4rem; margin: 0; background: linear-gradient(90deg, #8b5cf6, #3b82f6);
-             -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-        p { color: #94a3b8; line-height: 1.6; }
-        a { display: inline-block; margin-top: 12px; padding: 12px 24px; border-radius: 8px; color: #fff; text-decoration: none;
-            font-weight: 600; background: linear-gradient(90deg, #8b5cf6, #3b82f6); }
-    </style>
+    <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-    <main class="card">
-        <h1>404</h1>
-        <p>This page isn't trending. The link may be broken or the page may have moved.</p>
-        <a href="/">Back to TrendScript</a>
+    <header class="app-header">
+        <h1>TrendScript</h1>
+    </header>
+    <main class="app-container">
+        <section class="panel not-found">
+            <p class="code">404</p>
+            <h2>This page isn't trending</h2>
+            <p>The page you're looking for doesn't exist or has moved.</p>
+            <a class="btn btn-primary" href="/">Back to TrendScript</a>
+        </section>
     </main>
 </body>
 </html>
